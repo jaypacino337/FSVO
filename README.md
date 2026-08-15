@@ -110,6 +110,24 @@ your own orders to print volume — is deliberately not supported: it's market
 manipulation and the reliable way to get zeroed out of a points program.
 Check each venue's program rules before pointing size at it.
 
+## Strategy lab (`run_lab.py`)
+
+The lab is the "many wallets" idea done as parallel simulations: it samples
+dozens of strategy variants (FSVZO params x timeframe sets from 1m to 4h x
+quoting configs), backtests each on a train window, forward-tests the
+survivors on a held-out test window, and keeps the Pareto frontier of
+profit vs volume — everything with **negative cost/$1M** (volume that pays
+for itself).
+
+```bash
+python run_lab.py --days 60 --samples 40 --base 5m
+python run_volume.py --strategy strategies/best.json    # deploy the winner
+```
+
+Re-run weekly on fresh data to re-optimize. Only promote a strategy whose
+TEST metrics (not train) stay profitable across re-runs — a config that only
+wins on the window it was tuned on is overfit and will burn money live.
+
 ## Tuning
 
 - `FsvzoParams` (`fsvo/indicators.py`): VZO length, Fourier window/harmonics,

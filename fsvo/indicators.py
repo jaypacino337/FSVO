@@ -32,11 +32,11 @@ def fourier_smooth(series: pd.Series, window: int = 32, harmonics: int = 4) -> p
     of a rolling window, reconstructing the newest point each bar."""
     x = series.to_numpy(dtype=float)
     out = np.full(len(x), np.nan)
-    for i in range(window - 1, len(x)):
-        seg = x[i - window + 1 : i + 1]
-        spec = np.fft.rfft(seg)
-        spec[harmonics + 1 :] = 0.0
-        out[i] = np.fft.irfft(spec, n=window)[-1]
+    if len(x) >= window:
+        segs = np.lib.stride_tricks.sliding_window_view(x, window)
+        spec = np.fft.rfft(segs, axis=1)
+        spec[:, harmonics + 1 :] = 0.0
+        out[window - 1 :] = np.fft.irfft(spec, n=window, axis=1)[:, -1]
     return pd.Series(out, index=series.index)
 
 

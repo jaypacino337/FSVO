@@ -25,7 +25,7 @@ from pathlib import Path
 
 from fsvo import data
 from fsvo.confluence import ConfluenceEngine
-from fsvo.indicators import atr
+from fsvo.indicators import FsvzoParams, atr
 from fsvo.mm import MMConfig, make_quote
 from fsvo.signals import ExternalSignal
 from fsvo.venues import LiveVenue, PaperVenue, VenueConfig, replay
@@ -33,6 +33,29 @@ from fsvo.venues import LiveVenue, PaperVenue, VenueConfig, replay
 log = logging.getLogger("fsvo.volume")
 
 DEFAULT_TIMEFRAMES = {"15m": 1.0, "1h": 2.0, "4h": 3.0}
+
+
+def load_strategy(path: str | None) -> dict | None:
+    """Optional strategy file from run_lab.py (strategies/best.json)."""
+    if not path:
+        return None
+    strategy = json.loads(Path(path).read_text())
+    log.info("using lab strategy from %s (timeframes: %s)",
+             path, ",".join(strategy["timeframes"]))
+    return strategy
+
+
+def build_engine(timeframes: dict[str, float], strategy: dict | None) -> ConfluenceEngine:
+    if strategy:
+        return ConfluenceEngine(strategy["timeframes"], FsvzoParams(**strategy["fsvzo"]))
+    return ConfluenceEngine(timeframes)
+
+
+def build_mm(v_cfg: VenueConfig, strategy: dict | None) -> MMConfig:
+    if strategy:
+        return MMConfig(quote_size=v_cfg.quote_size,
+                        max_inventory=v_cfg.max_inventory, **strategy["mm"])
+    return MMConfig.for_volume(v_cfg.maker_fee, v_cfg.quote_size, v_cfg.max_inventory)
 
 
 def load_config(path: str | None) -> tuple[list[VenueConfig], dict[str, float]]:
@@ -53,8 +76,8 @@ def load_config(path: str | None) -> tuple[list[VenueConfig], dict[str, float]]:
 
 
 def replay_mode(venues: list[VenueConfig], timeframes: dict[str, float],
-                days: int) -> None:
-    engine = ConfluenceEngine(timeframes)
+                days: int, strategy: dict | None = None) -> None:
+    engine = build_engine(timeframes, strategy)
     reports = []
     for v_cfg in venues:
         if v_cfg.exchange_id:
@@ -63,7 +86,7 @@ def replay_mode(venues: list[VenueConfig], timeframes: dict[str, float],
         else:
             df = data.synthetic_ohlcv(days=days, seed=hash(v_cfg.name) % 2**31)
         confluence = engine.compute(df)["confluence"]
-        venue = PaperVenue(v_cfg)
+        venue = PaperVenue(v_cfg, mm_cfg=build_mm(v_cfg, strategy))
         reports.append(replay(venue, df, confluence))
 
     print(f"\n{'venue':>12} | {'volume_usd':>14} | {'fills':>6} | {'fees':>10} | "
@@ -84,8 +107,9 @@ def replay_mode(venues: list[VenueConfig], timeframes: dict[str, float],
 
 
 def live_mode(venues: list[VenueConfig], timeframes: dict[str, float],
-              interval: int, signal_file: str | None) -> None:
-    engine = ConfluenceEngine(timeframes)
+              interval: int, signal_file: str | None,
+              strategy: dict | None = None) -> None:
+    engine = build_engine(timeframes, strategy)
     external = ExternalSignal(signal_file, timeframes) if signal_file else None
     live = {}
     for v_cfg in venues:
@@ -109,9 +133,12 @@ def live_mode(venues: list[VenueConfig], timeframes: dict[str, float],
                 atr_pct = float((atr(df) / df["close"]).iloc[-1])
                 inventory = venue.inventory()
                 cfg = venue.cfg
+                # Funding bias: positive funding (longs pay) pushes the
+                # confluence down so inventory drifts to the collecting side.
+                funding = venue.funding_rate()
+                score = max(-1.0, min(1.0, score - funding * cfg.funding_bias_mult))
                 quote = make_quote(mid, atr_pct, inventory, score,
-                                   MMConfig.for_volume(cfg.maker_fee, cfg.quote_size,
-                                                       cfg.max_inventory))
+                                   build_mm(cfg, strategy))
                 venue.cancel_all()
                 if quote.flatten:
                     log.warning("%s: confluence flipped hard against inventory %.4f "
@@ -137,15 +164,18 @@ def main() -> None:
     p.add_argument("--interval", type=int, default=30, help="live poll seconds")
     p.add_argument("--signal-file", help="consume your indicator via signals.json "
                                          "(see run_signal_server.py)")
+    p.add_argument("--strategy", help="strategy json from run_lab.py "
+                                      "(e.g. strategies/best.json)")
     args = p.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     venues, timeframes = load_config(args.config)
+    strategy = load_strategy(args.strategy)
 
     if args.live:
-        live_mode(venues, timeframes, args.interval, args.signal_file)
+        live_mode(venues, timeframes, args.interval, args.signal_file, strategy)
     else:
-        replay_mode(venues, timeframes, args.days)
+        replay_mode(venues, timeframes, args.days, strategy)
 
 
 if __name__ == "__main__":

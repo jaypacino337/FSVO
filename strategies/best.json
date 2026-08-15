@@ -1,0 +1,35 @@
+{
+  "symbol": "BTC/USDT",
+  "base_timeframe": "5m",
+  "selected_by": "test_pnl on pareto frontier",
+  "metrics": {
+    "id": 5,
+    "train_pnl": -1177.04,
+    "train_volume": 1844935.0,
+    "test_pnl": 540.82,
+    "test_volume": 475599.0,
+    "test_cost_per_1m": -1137.13,
+    "test_fills": 150
+  },
+  "timeframes": {
+    "5m": 1.0,
+    "30m": 2.0,
+    "1h": 3.0
+  },
+  "fsvzo": {
+    "length": 28,
+    "fourier_window": 48,
+    "harmonics": 3,
+    "smooth": 3,
+    "noise_gate": 0.15
+  },
+  "mm": {
+    "base_half_spread": 0.0018,
+    "vol_spread_mult": 0.3,
+    "confluence_skew": 0.0015,
+    "inventory_skew": 0.001,
+    "size_lean": 0.5,
+    "flatten_threshold": 0.85,
+    "min_confluence_to_quote": 0.1
+  }
+}

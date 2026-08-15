@@ -17,7 +17,7 @@ import pandas as pd
 from .indicators import FsvzoParams, fsvzo, state_direction
 
 PANDAS_FREQ = {
-    "1m": "1min", "3m": "3min", "5m": "5min", "15m": "15min", "30m": "30min",
+    "1m": "1min", "3m": "3min", "5m": "5min", "15m": "15min", "30m": "30min", "45m": "45min",
     "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "12h": "12h", "1d": "1D",
 }
 

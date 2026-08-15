@@ -30,6 +30,7 @@ class VenueConfig:
     quote_size: float = 0.05         # per-quote size in base units
     max_inventory: float = 0.5
     timeframe: str = "15m"
+    funding_bias_mult: float = 300.0  # confluence shift per unit funding rate
 
 
 @dataclass
@@ -162,6 +163,14 @@ class LiveVenue:
         if quote.ask_price is not None and quote.ask_size > 0:
             self.exchange.create_order(self.cfg.symbol, "limit", "sell",
                                        quote.ask_size, quote.ask_price, params)
+
+    def funding_rate(self) -> float:
+        """Current funding rate (per interval); 0.0 if the venue lacks it."""
+        try:
+            info = self.exchange.fetch_funding_rate(self.cfg.symbol)
+            return float(info.get("fundingRate") or 0.0)
+        except Exception:
+            return 0.0
 
     def inventory(self) -> float:
         try:
