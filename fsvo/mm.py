@@ -27,6 +27,26 @@ class MMConfig:
     flatten_threshold: float = 0.6     # |confluence| against position => flatten
     min_confluence_to_quote: float = 0.15  # stand down in chop
 
+    @classmethod
+    def for_volume(cls, maker_fee: float, quote_size: float = 0.05,
+                   max_inventory: float = 0.5) -> "MMConfig":
+        """Volume-maximizing profile: quote both sides continuously with the
+        spread floor pinned just above round-trip maker fees, so each filled
+        round trip is ~breakeven-or-better before adverse selection. The
+        FSVZO confluence still skews quotes so inventory drifts with the
+        signal instead of bleeding against trend."""
+        return cls(
+            base_half_spread=max(2.0 * maker_fee + 0.0002, 0.0006),
+            vol_spread_mult=0.3,
+            confluence_skew=0.0010,
+            inventory_skew=0.0020,
+            quote_size=quote_size,
+            size_lean=0.5,
+            max_inventory=max_inventory,
+            flatten_threshold=0.75,
+            min_confluence_to_quote=0.0,
+        )
+
 
 @dataclass
 class Quote:

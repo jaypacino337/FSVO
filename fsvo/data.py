@@ -73,18 +73,19 @@ def synthetic_ohlcv(days: int = 60, timeframe_minutes: int = 15, seed: int = 7,
 
 
 def load(symbol: str, timeframe: str, days: int, csv: str | None = None,
-         cache_dir: str | Path = "data") -> pd.DataFrame:
+         cache_dir: str | Path = "data", exchange_id: str = "binance") -> pd.DataFrame:
     """CSV if given, else cache, else exchange fetch, else synthetic fallback."""
     if csv:
         return load_csv(csv)
 
-    cache = Path(cache_dir) / f"{symbol.replace('/', '-')}_{timeframe}_{days}d.csv"
+    safe_symbol = symbol.replace("/", "-").replace(":", "_")
+    cache = Path(cache_dir) / f"{exchange_id}_{safe_symbol}_{timeframe}_{days}d.csv"
     if cache.exists():
         log.info("Loading cached data from %s", cache)
         return load_csv(cache)
 
     try:
-        df = fetch_ccxt(symbol, timeframe, days)
+        df = fetch_ccxt(symbol, timeframe, days, exchange_id=exchange_id)
         cache.parent.mkdir(parents=True, exist_ok=True)
         save_csv(df, cache)
         log.info("Fetched %d candles from exchange; cached to %s", len(df), cache)

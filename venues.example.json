@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy to venues.json and edit. exchange_id must be a ccxt id (hyperliquid, paradex, ...); null uses synthetic data (paper testing only). maker_fee negative = rebate. Sizes are in base units of the symbol.",
+  "timeframes": {"15m": 1.0, "1h": 2.0, "4h": 3.0},
+  "venues": [
+    {"name": "hyperliquid", "exchange_id": "hyperliquid", "symbol": "BTC/USDC:USDC",
+     "maker_fee": 0.0001, "taker_fee": 0.00035, "quote_size": 0.02, "max_inventory": 0.2},
+    {"name": "paradex", "exchange_id": "paradex", "symbol": "BTC/USD:USDC",
+     "maker_fee": -0.00005, "taker_fee": 0.0003, "quote_size": 0.02, "max_inventory": 0.2},
+    {"name": "demo_dex", "exchange_id": null, "symbol": "BTC/USDT",
+     "maker_fee": 0.0, "taker_fee": 0.0005, "quote_size": 0.05, "max_inventory": 0.5}
+  ]
+}

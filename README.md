@@ -79,6 +79,37 @@ python run_paper.py --symbol BTC/USDT --interval 60
 The backtest prints a summary (return, max drawdown, Sharpe, fills, fees) and
 writes `data/backtest_equity.csv` / `data/backtest_fills.csv`.
 
+## Volume campaign mode (`run_volume.py`)
+
+For points/volume programs on perp DEXes, the objective flips: maximize
+**real maker volume per dollar of cost** while the FSVZO confluence keeps
+inventory drifting with the trend instead of bleeding against it.
+`MMConfig.for_volume(maker_fee)` pins the spread floor just above round-trip
+maker fees and quotes both sides continuously within inventory caps.
+
+```bash
+cp venues.example.json venues.json   # edit venues, fees, sizes
+
+python run_volume.py                 # replay: volume, fees, pnl, cost/$1M per venue
+python run_volume.py --live          # EXPERIMENTAL: real post-only quoting
+python run_volume.py --live --signal-file signals.json   # driven by YOUR indicator
+```
+
+To drive it with your licensed FSVZO instead of the built-in recreation, run
+`python run_signal_server.py` and point the terminal/TradingView alerts at
+`POST /signal` with `{"timeframe": "1h", "state": "strong_bull"}` (or a raw
+`direction` in [-1, 1]). Stale timeframes decay to neutral automatically.
+
+The replay's `cost/$1M` column is the campaign metric: net dollars burned per
+$1M of volume generated (negative = the volume paid for itself).
+
+**Hard rules built into the live path:** post-only orders only (never crosses
+the spread, never self-matches), per-venue inventory caps, quotes pulled when
+confluence flips hard against the position. Wash trading — trading against
+your own orders to print volume — is deliberately not supported: it's market
+manipulation and the reliable way to get zeroed out of a points program.
+Check each venue's program rules before pointing size at it.
+
 ## Tuning
 
 - `FsvzoParams` (`fsvo/indicators.py`): VZO length, Fourier window/harmonics,
